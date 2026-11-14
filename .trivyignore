@@ -1,0 +1,19 @@
+# Riscos ACEITOS conscientemente, cada um com justificativa e data de revisão.
+# Uma exceção sem dono ou sem prazo vira dívida técnica invisível.
+
+# EKS com endpoint público: o Argo CD hub roda no PC e precisa alcançar a API.
+# Mitigação: public_access_cidrs = <seu IP>/32. Produção: endpoint privado + hub na mesma VPC.
+AWS-0040 exp:2027-03-31
+AWS-0041 exp:2027-03-31
+
+# Egress irrestrito dos nodes: precisam baixar imagens (ghcr.io, docker.io).
+# Produção: VPC endpoints (ECR/S3/STS) + egress por NAT com firewall.
+AWS-0104 exp:2027-03-31
+
+# Subnets públicas com IP público nos nodes: cost_profile "lab" (sem NAT, ~US$32/mês/AZ).
+# Produção: cost_profile "prod" (subnets privadas).
+AWS-0164 exp:2027-03-31
+
+# State bucket com SSE-KMS usando a chave gerenciada pela AWS em vez de CMK.
+# Aceitável para lab; CMK entra quando houver requisito de rotação/controle de key policy.
+AWS-0132 exp:2027-03-31

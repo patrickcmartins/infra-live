@@ -1,0 +1,22 @@
+# Drift detection diária com OIDC (role somente leitura criada no aws/bootstrap).
+# Ativação: Settings > Variables: AWS_DRIFT_ENABLED=true; Secrets: AWS_READONLY_ROLE_ARN.
+name: drift
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  aws:
+    if: vars.AWS_DRIFT_ENABLED == 'true'
+    uses: patrickcmartins/terraform-workflows/.github/workflows/terraform-drift.yml@v1
+    with:
+      # Só stacks cujo state E dependências estão na AWS (o eks lê o state do hub local).
+      directories: '["aws/bootstrap"]'
+    secrets:
+      aws-role-arn: ${{ secrets.AWS_READONLY_ROLE_ARN }}

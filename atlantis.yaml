@@ -1,0 +1,34 @@
+# Repo-level config: QUAIS projetos existem e em que ORDEM.
+# As regras de segurança (quem aplica, quais workflows) ficam no repos.yaml do atlantis-server.
+version: 3
+automerge: false
+parallel_plan: true
+parallel_apply: false
+abort_on_execution_order_fail: true
+
+projects:
+  - name: local-mgmt
+    dir: local/mgmt
+    workflow: local
+    execution_order_group: 1
+    autoplan:
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+
+  - name: local-kind-dev
+    dir: local/kind-dev
+    workflow: local
+    execution_order_group: 2
+    depends_on: [local-mgmt]
+    autoplan:
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+
+  - name: aws-prod-eks
+    dir: aws/prod/eks
+    workflow: aws
+    execution_order_group: 2
+    depends_on: [local-mgmt]
+    autoplan:
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+
+# aws/bootstrap NÃO está aqui de propósito: é aplicado por um humano com
+# credencial de admin (break-glass). Ele cria a identidade que o Atlantis usa.
