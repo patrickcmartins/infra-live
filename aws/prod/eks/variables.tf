@@ -25,8 +25,9 @@ variable "public_access_cidrs" {
 variable "admin_role_arn" {
   description = "Role SSO dos humanos admin (kubectl). null = só o deployer."
   type        = string
-  default     = null
+  default     = "arn:aws:iam::716128129853:role/managed/AccountFullAccessRole"
 }
+
 
 variable "cluster_labels" {
   description = "Contrato com os ApplicationSets."
