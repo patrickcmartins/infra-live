@@ -76,8 +76,10 @@ resource "aws_s3_bucket_policy" "tfstate" {
 # GitHub Actions (drift detection, plans read-only) sem NENHUMA access key.
 data "aws_iam_policy_document" "state_read" {
   statement {
-    actions   = ["s3:GetObject", "s3:ListBucket"]
-    resources = [aws_s3_bucket.tfstate.arn, "${aws_s3_bucket.tfstate.arn}/*"]
+    actions = ["s3:GetObject", "s3:ListBucket"]
+    # ARN montado a partir do nome (conhecido no plan). Usar aws_s3_bucket.tfstate.arn
+    # deixa o JSON "unknown" e quebra o for_each do módulo (inline_policy_json != null).
+    resources = ["arn:aws:s3:::${var.state_bucket_name}", "arn:aws:s3:::${var.state_bucket_name}/*"]
   }
 }
 

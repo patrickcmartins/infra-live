@@ -4,13 +4,13 @@ terraform {
   # 1º apply: state local (o bucket ainda não existe — ovo e galinha).
   # Depois descomente o bloco abaixo e rode: terraform init -migrate-state
   #
-  # backend "s3" {
-  #   bucket       = "patrickcmartins-tfstate-lab-use1"
-  #   key          = "aws/bootstrap/terraform.tfstate"
-  #   region       = "us-east-1"
-  #   encrypt      = true
-  #   use_lockfile = true
-  # }
+  backend "s3" {
+    bucket       = "patrickcmartins-tfstate-lab-use2"
+    key          = "aws/bootstrap/terraform.tfstate"
+    region       = "us-east-2"
+    encrypt      = true
+    use_lockfile = true
+  }
 
   required_providers {
     aws = { source = "hashicorp/aws", version = "~> 6.0" }

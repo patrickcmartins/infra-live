@@ -1,7 +1,7 @@
 variable "region" {
   description = "Região principal."
   type        = string
-  default     = "us-east-1"
+  default     = "us-east-2"
 }
 
 variable "owner" {
@@ -19,7 +19,7 @@ variable "github_owner" {
 variable "state_bucket_name" {
   description = "Bucket de state (nome global; precisa bater com os backends)."
   type        = string
-  default     = "patrickcmartins-tfstate-lab-use1"
+  default     = "patrickcmartins-tfstate-lab-use2"
 }
 
 variable "budget_limit_usd" {

@@ -1,5 +1,5 @@
 output "cluster_name" {
-  description = "aws eks update-kubeconfig --name <isto> --region us-east-1"
+  description = "aws eks update-kubeconfig --name <isto> --region us-east-2"
   value       = module.eks.cluster_name
 }
 
