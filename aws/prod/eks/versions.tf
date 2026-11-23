@@ -2,9 +2,9 @@ terraform {
   required_version = ">= 1.10.0"
 
   backend "s3" {
-    bucket       = "patrickcmartins-tfstate-lab-use1"
+    bucket       = "patrickcmartins-tfstate-lab-use2"
     key          = "aws/prod/eks/terraform.tfstate"
-    region       = "us-east-1"
+    region       = "us-east-2"
     encrypt      = true
     use_lockfile = true # lock nativo no S3 (sem DynamoDB) desde o TF 1.10
   }

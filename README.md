@@ -11,6 +11,10 @@ aws/prod/eks    EKS "eks-prod"   spoke prod (registrado no hub)      state: S3 +
 aws/bootstrap   bucket, OIDC GitHub, role deployer, budget           aplicado por HUMANO
 ```
 
+## Decisões de arquitetura (ADRs)
+
+- [0001: Topologia de ambientes](docs/adr/0001-topologia-de-ambientes.md): cluster por ambiente vs namespace por ambiente, com ganhos e perdas de cada um.
+
 ## Ordem (e por quê)
 
 1. **`aws/bootstrap`**: manual, fora do Atlantis, porque cria a identidade que o Atlantis usa. Ver o [README](aws/bootstrap/README.md).
