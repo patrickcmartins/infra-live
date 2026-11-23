@@ -13,4 +13,5 @@ cluster_labels = {
   workloads     = "enabled"
   observability = "enabled"
   messaging     = "enabled"
+  dns           = "enabled"
 }

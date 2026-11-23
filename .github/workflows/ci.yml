@@ -19,10 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: main.tf, variables.tf e outputs.tf idênticos entre stg e prod
+      - name: todo *.tf (exceto versions.tf) idêntico entre stg e prod
         run: |
-          for f in main.tf variables.tf outputs.tf; do
-            diff -u "aws/stg/eks/$f" "aws/prod/eks/$f"
+          diff -u <(cd aws/stg/eks && printf '%s\n' ./*.tf) <(cd aws/prod/eks && printf '%s\n' ./*.tf)
+          for f in aws/stg/eks/*.tf; do
+            name=$(basename "$f")
+            [ "$name" = versions.tf ] && continue
+            diff -u "$f" "aws/prod/eks/$name"
           done
       - name: versions.tf difere só na chave do state
         run: |
