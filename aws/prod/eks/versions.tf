@@ -20,9 +20,9 @@ provider "aws" {
   default_tags {
     tags = {
       Owner       = var.owner
-      Environment = "prod"
+      Environment = var.environment
       ManagedBy   = "terraform"
-      Repo        = "infra-live/aws/prod/eks"
+      Repo        = "infra-live/aws/${var.environment}/eks"
     }
   }
 }

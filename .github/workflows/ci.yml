@@ -12,3 +12,18 @@ permissions:
 jobs:
   terraform:
     uses: patrickcmartins/terraform-workflows/.github/workflows/terraform-ci.yml@v1
+
+  # Paridade entre ambientes: stg só prova algo sobre prod se o CÓDIGO for o mesmo.
+  # Diferenças permitidas: terraform.tfvars e a chave do state (versions.tf).
+  env-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: main.tf, variables.tf e outputs.tf idênticos entre stg e prod
+        run: |
+          for f in main.tf variables.tf outputs.tf; do
+            diff -u "aws/stg/eks/$f" "aws/prod/eks/$f"
+          done
+      - name: versions.tf difere só na chave do state
+        run: |
+          diff <(grep -v 'key  *=' aws/stg/eks/versions.tf) <(grep -v 'key  *=' aws/prod/eks/versions.tf)

@@ -10,10 +10,23 @@ variable "owner" {
   default     = "patrickcmartins"
 }
 
+variable "environment" {
+  description = "Nome do ambiente (stg, prod): tags, labels e nome do cluster derivam daqui."
+  type        = string
+  validation {
+    condition     = contains(["stg", "prod"], var.environment)
+    error_message = "environment deve ser stg ou prod."
+  }
+}
+
 variable "cluster_name" {
   description = "Nome do cluster (também o nome no Argo CD e o diretório envs/ no sample-app-deploy)."
   type        = string
-  default     = "eks-prod"
+}
+
+variable "vpc_cidr" {
+  description = "CIDR da VPC. Diferente por ambiente: permite peering/Transit Gateway no futuro sem conflito."
+  type        = string
 }
 
 variable "public_access_cidrs" {
@@ -30,15 +43,6 @@ variable "admin_role_arn" {
 
 
 variable "cluster_labels" {
-  description = "Contrato com os ApplicationSets."
+  description = "Contrato com os ApplicationSets (quais addons e workloads o cluster recebe)."
   type        = map(string)
-  default = {
-    cloud         = "aws"
-    env           = "prod"
-    role          = "spoke"
-    mesh          = "istio"
-    workloads     = "enabled"
-    observability = "enabled"
-    messaging     = "enabled"
-  }
 }
