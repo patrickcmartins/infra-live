@@ -39,5 +39,6 @@ variable "cluster_labels" {
     mesh          = "istio"
     workloads     = "enabled"
     observability = "enabled"
+    messaging     = "enabled"
   }
 }
