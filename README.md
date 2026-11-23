@@ -12,6 +12,15 @@ aws/prod/eks    EKS "eks-prod"   spoke prod (registrado no hub)      state: S3 +
 aws/bootstrap   bucket, OIDC GitHub, role deployer, budget           aplicado por HUMANO
 ```
 
+## Desenvolvimento local
+
+```bash
+pre-commit install          # uma vez por clone: fmt, validate, tflint e gitleaks no seu commit
+pre-commit run --all-files  # rodar em tudo
+```
+
+Os mesmos checks rodam no CI (o hook local pode ser pulado; o CI não). Por que e como: [shift left](docs/shift-left.md).
+
 ## Decisões de arquitetura (ADRs)
 
 - [0001: Topologia de ambientes](docs/adr/0001-topologia-de-ambientes.md): cluster por ambiente vs namespace por ambiente, com ganhos e perdas de cada um.

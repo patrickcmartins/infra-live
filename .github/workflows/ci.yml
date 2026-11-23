@@ -30,3 +30,20 @@ jobs:
       - name: versions.tf difere só na chave do state
         run: |
           diff <(grep -v 'key  *=' aws/stg/eks/versions.tf) <(grep -v 'key  *=' aws/prod/eks/versions.tf)
+
+  # O mesmo .pre-commit-config.yaml do dev, no CI: quem pulou o hook local (--no-verify)
+  # é pego aqui. Os hooks de Terraform já rodam no job "terraform" (mesmas versões), então
+  # aqui ficam só os genéricos (segredos, YAML, arquivos grandes...).
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks olha o histórico do PR, não só a árvore
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pre-commit==4.7.0
+      - run: pre-commit run --all-files --show-diff-on-failure
+        env:
+          SKIP: no-commit-to-branch,terraform_fmt,terraform_validate,terraform_tflint

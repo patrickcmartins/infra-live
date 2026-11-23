@@ -1,0 +1,46 @@
+# Shift left: os mesmos checks do CI, na SUA máquina, antes do commit (segundos, não minutos).
+# Instalar uma vez por clone:  pre-commit install
+# Rodar em tudo:               pre-commit run --all-files
+#
+# - revs fixadas por SHA (tag pode ser movida, commit não): supply chain. Atualizar com
+#   `pre-commit autoupdate --freeze` num PR, como qualquer dependência.
+# - Hooks rápidos de propósito. O pesado (trivy, terraform test) fica no CI; hook lento
+#   vira `git commit --no-verify`, e aí não protege nada.
+# - O CI roda este mesmo arquivo (job pre-commit): pular o hook local não pula a regra.
+default_install_hook_types: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
+    hooks:
+      - id: no-commit-to-branch          # mudança na main só por PR (o ruleset garante no servidor)
+        args: [--branch, main]
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+      - id: check-added-large-files       # tfstate/plan/binário commitado por engano
+        args: [--maxkb=500]
+
+  # Segredos (tokens, chaves AWS, PATs do GitHub) barrados ANTES de entrar no histórico.
+  # Depois do push, remover do Git não basta: o segredo tem que ser revogado.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # frozen: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  # Terraform: mesmas ferramentas e versões do CI (terraform 1.17.2, tflint v0.66.0, .tflint.hcl).
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: b9e409b0fee34ee0eee7e6f6a407061f15032926  # frozen: v1.109.5
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+          - --tf-init-args=-backend=false
+      - id: terraform_tflint
+        args:
+          - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl
