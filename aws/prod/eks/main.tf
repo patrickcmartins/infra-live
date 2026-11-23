@@ -1,8 +1,9 @@
 module "eks" {
-  source = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/aws-eks?ref=v0.1.2"
+  source = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/aws-eks?ref=v0.2.0"
 
   name                = var.cluster_name
   cost_profile        = "lab"
+  vpc_cidr            = var.vpc_cidr
   instance_types      = ["t3.xlarge", "t3a.xlarge"] # Istio + OTel + Prometheus/Tempo/Loki
   webhook_ports       = [15017]                     # istiod: injeção de sidecar e validação
   public_access_cidrs = var.public_access_cidrs
