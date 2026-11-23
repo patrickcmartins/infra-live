@@ -47,5 +47,13 @@ projects:
     autoplan:
       when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
 
+  # Configuração do GitHub (environments, proteção da main): quem pode fazer deploy onde.
+  - name: github-config
+    dir: github
+    workflow: local
+    execution_order_group: 1
+    autoplan:
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+
 # aws/bootstrap NÃO está aqui de propósito: é aplicado por um humano com
 # credencial de admin (break-glass). Ele cria a identidade que o Atlantis usa.
