@@ -1,5 +1,5 @@
 module "eks" {
-  source = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/aws-eks?ref=v0.1.1"
+  source = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/aws-eks?ref=v0.1.2"
 
   name                = var.cluster_name
   cost_profile        = "lab"
