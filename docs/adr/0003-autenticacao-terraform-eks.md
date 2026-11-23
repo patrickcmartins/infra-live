@@ -95,19 +95,139 @@ As Access Entries aceitam *access policies* com escopo: `AmazonEKSClusterAdminPo
 
 ## Parte 4: a dívida que esta análise revelou (Argo CD → clusters)
 
-Para o hub (Argo CD, no kind local) falar com os clusters EKS, criamos uma ServiceAccount `argocd-manager` com **cluster-admin** e um **token sem expiração** (Secret do tipo `service-account-token`), guardado no Secret de cluster do Argo CD.
+### Como é hoje
+
+Para o hub (Argo CD, num kind local) falar com os clusters EKS, cada stack de spoke cria:
+
+1. uma ServiceAccount `argocd-manager` no spoke, com **cluster-admin**;
+2. um Secret `kubernetes.io/service-account-token`, ou seja, um **token que nunca expira**;
+3. o Secret de cluster no hub com esse token (`bearerToken`).
 
 | Problema | Por que importa |
 |---|---|
-| O token não expira | Se vazar (backup do etcd do hub, `kubectl get secret` de alguém com acesso), dá cluster-admin em prod até alguém revogar |
-| cluster-admin | O Argo CD precisa de CRDs e webhooks (Istio, Strimzi), mas poderia ter um ClusterRole mais restrito |
+| O token não expira | Se vazar (backup do etcd do hub, alguém com `get secret` no namespace `argocd`, log mal configurado), dá cluster-admin em prod **até alguém perceber e revogar** |
+| É um segredo guardado | Precisa de rotação, de proteção e de auditoria: trabalho que ninguém faz até o dia do incidente |
+| cluster-admin | O Argo CD precisa de muito (CRDs e webhooks do Istio e do Strimzi), mas não de tudo |
 
-**Como resolvem no mundo real:**
+### O jeito certo na AWS: hub no EKS, autenticando por IAM
 
-1. **Hub rodando no EKS** com **IRSA ou Pod Identity**: o Secret de cluster do Argo CD usa `awsAuthConfig` (`clusterName` + `roleARN`), o Argo CD gera tokens do EKS de 15 min sob demanda, e **não existe token guardado**. Cada spoke dá à role do hub uma Access Entry.
-2. Se o hub não estiver na AWS: um token de ServiceAccount **com expiração** (TokenRequest API) mais rotação automática (External Secrets ou um job), ou o **agent do Argo CD** (modelo *pull*, em que o spoke busca a configuração e o hub não precisa de credencial para entrar nele).
+A ideia central: **trocar "um segredo guardado" por "uma identidade"**. O Argo CD deixa de ter um token e passa a *ser* uma role IAM. Cada vez que precisa falar com um spoke, ele gera um token do EKS de 15 min a partir dessa identidade, exatamente como o `aws eks get-token` da Parte 2.
 
-**Neste lab** o hub é um kind no PC, então não há como usar IRSA ou Pod Identity. A dívida fica registrada, com a solução definida para quando o hub for para a AWS.
+São três peças.
+
+#### Peça 1: EKS Pod Identity (o pod do Argo CD ganha uma role IAM)
+
+```
+hub (EKS)
+├── addon eks-pod-identity-agent    DaemonSet em cada node (já ligado no nosso módulo aws-eks)
+└── namespace argocd
+    ├── SA argocd-application-controller ─┐
+    └── SA argocd-server ─────────────────┴─ Pod Identity Association ─► role IAM "argocd-hub"
+```
+
+- Uma **Pod Identity Association** (`aws_eks_pod_identity_association`) diz: "a ServiceAccount X, no namespace Y deste cluster, assume a role Z".
+- O agente intercepta o pedido de credencial do pod e entrega **credenciais temporárias** dessa role (o SDK da AWS no pod as encontra sozinho, via `AWS_CONTAINER_CREDENTIALS_FULL_URI`).
+- A trust policy da role é **genérica**: `Principal: pods.eks.amazonaws.com`, ações `sts:AssumeRole` e `sts:TagSession`. Quem amarra role a pod é a association, não a trust policy.
+- **Nenhuma chave** em lugar nenhum: as credenciais duram horas e são renovadas sozinhas.
+
+> **IRSA** (IAM Roles for Service Accounts) é a forma anterior: um provedor OIDC por cluster e uma trust policy com o `sub` `system:serviceaccount:argocd:argocd-application-controller`. Funciona igual na prática. O Pod Identity é mais simples (sem provedor OIDC por cluster, trust policy reutilizável, associação por API) e é a recomendação atual para EKS. O IRSA ainda aparece muito em sistemas existentes e em casos fora do EKS.
+
+#### Peça 2: `awsAuthConfig` no Secret de cluster do Argo CD (sem token nenhum)
+
+Hoje (token guardado):
+
+```yaml
+# Secret do cluster eks-prod no hub
+stringData:
+  name: eks-prod
+  server: https://XXXX.gr7.us-east-2.eks.amazonaws.com
+  config: |
+    { "bearerToken": "eyJhbGciOi...(nunca expira)...",
+      "tlsClientConfig": { "caData": "LS0t..." } }
+```
+
+Mundo ideal (identidade):
+
+```yaml
+stringData:
+  name: eks-prod
+  server: https://XXXX.gr7.us-east-2.eks.amazonaws.com
+  config: |
+    { "awsAuthConfig": {
+        "clusterName": "eks-prod",
+        "roleARN": "arn:aws:iam::<CONTA-PROD>:role/argocd-deployer-prod" },
+      "tlsClientConfig": { "caData": "LS0t..." } }
+```
+
+O que acontece a cada sincronização:
+
+```
+1. o application-controller precisa falar com o eks-prod
+2. chama "argocd-k8s-auth aws" (binário que vem na imagem do Argo CD)
+3. com a credencial do Pod Identity (role argocd-hub) faz sts:AssumeRole na roleARN do spoke
+4. com essa credencial, assina um sts:GetCallerIdentity = token do EKS (15 min), e reusa até expirar
+5. o eks-prod valida no STS, vê "role/argocd-deployer-prod" e aplica a Access Entry dela
+```
+
+**O que fica guardado no hub: só o endereço, a CA e o nome de uma role. Nada que dê acesso sozinho.** Vazou o Secret? O atacante não consegue usar sem também **ser** a role `argocd-hub`, o que só acontece dentro do pod do Argo CD, naquele cluster.
+
+#### Peça 3: em cada spoke, uma Access Entry para a role do Argo CD
+
+```hcl
+# no stack do spoke (aws/prod/eks), em vez da ServiceAccount + token:
+access_entries = {
+  argocd = {
+    principal_arn = "arn:aws:iam::<CONTA-PROD>:role/argocd-deployer-prod"
+    # Lab: admin. Ideal: kubernetes_groups = ["argocd-deployer"] + um ClusterRole
+    # com só o que o Argo CD aplica (CRDs, webhooks, namespaces dos addons e das apps).
+    policy_associations = {
+      admin = {
+        policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+        access_scope = { type = "cluster" }
+      }
+    }
+  }
+}
+```
+
+E a role do spoke confia na role do hub (role chaining):
+
+```hcl
+# trust policy de argocd-deployer-prod
+principals { type = "AWS", identifiers = ["arn:aws:iam::<CONTA-HUB>:role/argocd-hub"] }
+actions    = ["sts:AssumeRole", "sts:TagSession"]
+```
+
+### Por que uma role por spoke (e não a role do hub direto em todos)
+
+| Desenho | Ganha | Perde |
+|---|---|---|
+| **A role do hub tem Access Entry em todos os clusters** | Simples: uma role, sem `roleARN` | Comprometeu o hub = acesso a tudo. Não dá para revogar um ambiente sem afetar os outros. Não funciona bem entre contas. |
+| **Uma role por spoke** (`roleARN` no `awsAuthConfig`), assumida pela role do hub | Revoga prod sem tocar stg; permissões diferentes por ambiente; **funciona entre contas** (o hub numa conta de "tooling", os spokes nas contas de stg e prod); o CloudTrail mostra qual role tocou qual cluster | Uma role e uma trust policy por spoke (é só Terraform; o módulo do spoke cria) |
+
+Em empresa com **uma conta por ambiente** (ADR 0001), a segunda opção é a única que escala.
+
+### Comparando as alternativas
+
+| Opção | Segredo guardado? | Expira? | Funciona com o hub fora da AWS? | Comentário |
+|---|---|---|---|---|
+| Token de SA sem expiração (**hoje**) | Sim | Nunca | Sim | Simples e perigoso. Aceitável só em lab, e documentado como dívida. |
+| Token de SA **com expiração** (TokenRequest) + rotação automática | Sim | Sim (horas/dias) | Sim | Melhor que hoje, mas exige um job ou operador de rotação (e se a rotação parar, o deploy para). |
+| **`awsAuthConfig` + Pod Identity/IRSA** (hub no EKS) | **Não** | Token de 15 min, renovado sozinho | Não | **O padrão para Argo CD gerenciando EKS.** |
+| **Argo CD Agent** (modelo *pull*) | O agente no spoke tem a credencial dele | Depende | Sim | Inverte a direção: o spoke busca o que aplicar. O hub não precisa de acesso de entrada aos clusters (bom para redes isoladas e escala grande). Mais peças para operar. |
+
+### Tradeoffs de colocar o hub no EKS
+
+| Ganha | Perde |
+|---|---|
+| Zero segredo de acesso aos clusters, rotação automática, auditoria no CloudTrail | **Custo:** mais um cluster (ou o hub dentro de um cluster de "tooling" compartilhado) |
+| O Argo CD fica perto dos spokes (latência, rede privada via peering/Transit Gateway em vez de endpoints públicos) | **O hub vira peça crítica:** fora do ar, nada é implantado (o que já está rodando continua). Pede HA (réplicas do controller e do repo-server, Redis HA) e DR (o hub inteiro recriável por Terraform + bootstrap do Argo CD em minutos). |
+| Encaixa no modelo de contas separadas (hub em conta de tooling) | **Quem cria o hub?** Ele não pode se gerenciar do zero: o bootstrap do hub é Terraform (ou um script), fora do próprio Argo CD (o "problema do ovo e da galinha"). |
+| | Raio de impacto: um hub para tudo é um alvo valioso. Empresas grandes usam **um hub para não-prod e outro para prod**. |
+
+### Por que não fizemos isso neste lab
+
+O hub é um **kind no PC**, e o Pod Identity e o IRSA só existem dentro do EKS. Para ter a solução completa seria preciso um terceiro EKS (o hub), mais uns US$ 0,10/h de control plane mais os nodes, ou mover o Argo CD para um dos spokes, o que mistura "gerenciador" com "gerenciado". A dívida fica registrada com o desenho acima pronto para implementar.
 
 ---
 
