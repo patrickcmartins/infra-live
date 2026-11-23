@@ -15,6 +15,7 @@ aws/bootstrap   bucket, OIDC GitHub, role deployer, budget           aplicado po
 ## Decisões de arquitetura (ADRs)
 
 - [0001: Topologia de ambientes](docs/adr/0001-topologia-de-ambientes.md): cluster por ambiente vs namespace por ambiente, com ganhos e perdas de cada um.
+- [0002: Entrega de Terraform e locks](docs/adr/0002-terraform-entrega-e-locks.md): lock de state vs lock de PR, locks em time grande, e local, CI, Atlantis, TACOS ou Crossplane por tamanho de time e projeto.
 
 ## stg e prod: mesmo código, valores diferentes
 
