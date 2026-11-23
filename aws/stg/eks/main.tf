@@ -21,15 +21,17 @@ module "eks" {
   }
 }
 
-# Token via API (sem depender do aws-cli dentro do container do Atlantis).
-data "aws_eks_cluster_auth" "this" {
-  name = module.eks.cluster_name
-}
-
+# Auth por exec: token NOVO a cada chamada. O token estático (data aws_eks_cluster_auth)
+# é gerado no início do run e expira em 15 min; criar o cluster leva mais que isso, e os
+# recursos de Kubernetes do mesmo apply falhavam com "Unauthorized".
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  token                  = data.aws_eks_cluster_auth.this.token
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.region]
+  }
 }
 
 # Identidade dedicada do Argo CD neste cluster: revogável sem afetar mais nada.
