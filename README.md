@@ -7,6 +7,7 @@ e quem roda `plan`/`apply` é o [Atlantis](https://github.com/patrickcmartins/at
 ```
 local/mgmt      kind "mgmt"      hub: Argo CD + root app ─► platform-gitops/bootstrap/hub
 local/kind-dev  kind "kind-dev"  spoke dev  (registrado no hub)      state: Postgres
+aws/stg/eks     EKS "eks-stg"    spoke stg  (registrado no hub)      state: S3 + lockfile
 aws/prod/eks    EKS "eks-prod"   spoke prod (registrado no hub)      state: S3 + lockfile
 aws/bootstrap   bucket, OIDC GitHub, role deployer, budget           aplicado por HUMANO
 ```
@@ -14,6 +15,14 @@ aws/bootstrap   bucket, OIDC GitHub, role deployer, budget           aplicado po
 ## Decisões de arquitetura (ADRs)
 
 - [0001: Topologia de ambientes](docs/adr/0001-topologia-de-ambientes.md): cluster por ambiente vs namespace por ambiente, com ganhos e perdas de cada um.
+- [0002: Entrega de Terraform e locks](docs/adr/0002-terraform-entrega-e-locks.md): lock de state vs lock de PR, locks em time grande, e local, CI, Atlantis, TACOS ou Crossplane por tamanho de time e projeto.
+
+## stg e prod: mesmo código, valores diferentes
+
+`aws/stg/eks` e `aws/prod/eks` têm **o mesmo** `main.tf`, `variables.tf` e `outputs.tf`. O que muda entre eles mora
+**só** no `terraform.tfvars` (nome, CIDR da VPC, labels) e na chave do state. O job `env-parity` do CI falha se o
+código divergir, porque um stg diferente de prod não prova nada sobre prod. No `atlantis.yaml`, prod depende de stg:
+num PR que mexe nos dois, stg é aplicado primeiro. Por que dois clusters e não dois namespaces: [ADR 0001](docs/adr/0001-topologia-de-ambientes.md).
 
 ## Ordem (e por quê)
 

@@ -22,11 +22,20 @@ projects:
     autoplan:
       when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
 
-  - name: aws-prod-eks
-    dir: aws/prod/eks
+  - name: aws-stg-eks
+    dir: aws/stg/eks
     workflow: aws
     execution_order_group: 2
     depends_on: [local-mgmt]
+    autoplan:
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+
+  # prod depende de stg: num PR que mexe nos dois, stg aplica primeiro (e tem que dar certo).
+  - name: aws-prod-eks
+    dir: aws/prod/eks
+    workflow: aws
+    execution_order_group: 3
+    depends_on: [local-mgmt, aws-stg-eks]
     autoplan:
       when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
 
