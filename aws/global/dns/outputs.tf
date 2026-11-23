@@ -9,5 +9,6 @@ output "zone_ids" {
 }
 
 output "zone_names" {
+  description = "Nomes das zonas por ambiente (ex.: stg.lab.neosix.me)."
   value = { for k, z in aws_route53_zone.env : k => z.name }
 }
