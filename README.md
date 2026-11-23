@@ -16,6 +16,7 @@ aws/bootstrap   bucket, OIDC GitHub, role deployer, budget           aplicado po
 
 - [0001: Topologia de ambientes](docs/adr/0001-topologia-de-ambientes.md): cluster por ambiente vs namespace por ambiente, com ganhos e perdas de cada um.
 - [0002: Entrega de Terraform e locks](docs/adr/0002-terraform-entrega-e-locks.md): lock de state vs lock de PR, locks em time grande, e local, CI, Atlantis, TACOS ou Crossplane por tamanho de time e projeto.
+- [0003: Autenticação do Terraform e do Argo CD no EKS](docs/adr/0003-autenticacao-terraform-eks.md): o token de 15 min, token estático vs exec, Access Entries, credenciais de curta duração, e a dívida do token do Argo CD.
 
 ## stg e prod: mesmo código, valores diferentes
 

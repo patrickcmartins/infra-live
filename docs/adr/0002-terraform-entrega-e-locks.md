@@ -104,6 +104,56 @@ Os princípios do OpenGitOps são: (1) declarativo, (2) versionado e imutável n
 
 ---
 
+---
+
+## Parte 5: vários projetos e vários times (a organização inteira)
+
+Com um time só, o assunto é "qual ferramenta". Com muitos times e projetos, o assunto passa a ser **fronteiras**: quem pode mudar o quê, com qual credencial, e como os padrões se espalham sem virar gargalo.
+
+### Camadas: nem tudo é de todo mundo
+
+| Camada | Exemplos | Dono | Cadência | Onde vive |
+|---|---|---|---|---|
+| **0. Organização** | Contas AWS (Organizations, Control Tower), SCPs, SSO, billing, rede de trânsito | Time de plataforma ou cloud foundation | Rara (semanas) | Repo `org-foundation`, apply muito restrito |
+| **1. Plataforma** | VPCs, EKS, IAM base, DNS raiz, observabilidade central | Time de plataforma | Média (dias) | Repo `infra-live` (como este), por conta e ambiente |
+| **2. Serviço** | Banco, fila, bucket e cache **de uma aplicação** | Time do produto | Alta (diária) | No repo do time (`team-payments-infra`) **ou** self-service (Crossplane / TACOS no-code) |
+
+A regra: **uma camada só lê a de baixo (outputs/remote state), nunca escreve nela.** O time de pagamentos não altera a VPC; ele pede uma subnet ou usa a que existe.
+
+### Como os times reutilizam sem copiar
+
+- **Módulos internos versionados** (como o `terraform-modules`), publicados num **registry privado** (HCP, Spacelift ou um repo Git com tags). Cada módulo tem dono, CHANGELOG e semver: um `major` exige migração planejada.
+- **Golden paths**: um módulo `service-baseline` que já vem com tags, criptografia, logs e alarmes. O caminho certo é o caminho fácil.
+- **Policy as code centralizada** (OPA/conftest, Sentinel), aplicada em **todos** os repos: tags obrigatórias, nada público, só as regiões permitidas. O time de plataforma é dono das policies; os times são donos do código.
+
+### Credenciais e isolamento (o ponto mais cobrado em entrevista)
+
+- **Uma role de deploy por time e por conta/ambiente**, com permissões só para o que é dele. Nunca uma credencial única de admin no CI para todo mundo.
+- Com Atlantis: **várias instâncias** (por domínio ou conta) ou **credenciais por projeto**, já que uma instância só com admin em tudo é um alvo de alto valor. Com TACOS: workspaces/stacks com RBAC por time.
+- OIDC por repo e por environment (`repo:org/team-x-infra:environment:prod`): o repo do time X **não consegue** assumir a role do time Y.
+- **Uma conta AWS por time e ambiente** (account vending): o maior isolamento possível, com raio de impacto e billing naturalmente separados.
+
+### Organização dos repos
+
+| Modelo | Ganha | Perde | Bom para |
+|---|---|---|---|
+| **Monorepo único de infra** | Visibilidade total, refactors transversais, um CI só | CODEOWNERS complexo, CI lento, todo mundo vê tudo, uma fila de locks só | Até alguns times, com plataforma forte |
+| **Repo por camada** (`org`, `platform`, e um por time de produto) | Fronteiras claras de acesso e cadência; cada time autônomo | Padrões divergem sem módulos e policies centrais; dependências entre repos | **O mais comum em empresas médias e grandes** |
+| **Infra junto do código da app** (pasta `infra/` no repo do serviço) | O time muda app e infra no mesmo PR; dono óbvio | Duplicação entre serviços, e mais difícil impor padrão (precisa de módulos e policy fortes) | Times de produto autônomos ("you build it, you run it") |
+
+### Como fica o fluxo numa empresa grande (exemplo)
+
+```
+org-foundation  (cloud team)    ─► contas, SCP, SSO           ─► apply: 2 aprovadores, janela de mudança
+platform-infra  (platform team) ─► VPC, EKS, DNS, observab.   ─► Atlantis/TACOS por conta, stg antes de prod
+team-*-infra    (cada time)     ─► RDS, SQS, S3 do serviço    ─► mesmo pipeline, role restrita ao time
+  └─ usam: registry de módulos (semver) + policy central (OPA) + OIDC por repo/env
+platform-gitops (platform team) ─► addons de cluster (Argo CD, por label)
+team-*-deploy   (cada time)     ─► apps (Argo CD, AppProject por time = fronteira de permissão)
+```
+
+**Tradeoff de fundo:** *centralizar* (um time aplica tudo) dá consistência e segurança, mas vira gargalo. *Descentralizar* (cada time aplica o seu) dá velocidade, mas exige **guardrails automáticos** (módulos, policy, roles restritas, drift). A resposta madura: **descentralizar a execução e centralizar os guardrails.**
+
 ## Decisão neste lab
 
 - **Atlantis**, com apply antes do merge, `repo_locks: on_plan`, `apply_requirements: [mergeable, undiverged]` e policy check (conftest) obrigatório.
