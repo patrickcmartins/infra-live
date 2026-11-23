@@ -1,7 +1,7 @@
 variable "domain" {
   description = "Zona pai, delegada pelo registrador do domínio (registros NS lá apontando para os name servers do output)."
   type        = string
-  default     = "lab.neosix.me"
+  default     = "patricktf.neosix.me"
 }
 
 variable "environments" {
