@@ -22,6 +22,14 @@ projects:
     autoplan:
       when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
 
+  # Zonas DNS (pai + uma por ambiente). Os clusters leem os IDs das zonas daqui.
+  - name: aws-global-dns
+    dir: aws/global/dns
+    workflow: aws
+    execution_order_group: 1
+    autoplan:
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+
   - name: aws-stg-eks
     dir: aws/stg/eks
     workflow: aws
