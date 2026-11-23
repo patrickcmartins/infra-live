@@ -34,7 +34,7 @@ projects:
     dir: aws/stg/eks
     workflow: aws
     execution_order_group: 2
-    depends_on: [local-mgmt]
+    depends_on: [local-mgmt, aws-global-dns]
     autoplan:
       when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
 
