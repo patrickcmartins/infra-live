@@ -33,10 +33,11 @@ variable "cluster_labels" {
   description = "Contrato com os ApplicationSets."
   type        = map(string)
   default = {
-    cloud     = "aws"
-    env       = "prod"
-    role      = "spoke"
-    mesh      = "istio"
-    workloads = "enabled"
+    cloud         = "aws"
+    env           = "prod"
+    role          = "spoke"
+    mesh          = "istio"
+    workloads     = "enabled"
+    observability = "enabled"
   }
 }

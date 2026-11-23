@@ -3,6 +3,7 @@ module "eks" {
 
   name                = var.cluster_name
   cost_profile        = "lab"
+  instance_types      = ["t3.xlarge", "t3a.xlarge"] # Istio + OTel + Prometheus/Tempo/Loki
   public_access_cidrs = var.public_access_cidrs
 
   access_entries = var.admin_role_arn == null ? {} : {
