@@ -95,4 +95,10 @@ module "registration" {
   ca_data      = base64decode(module.eks.cluster_certificate_authority_data)
   bearer_token = kubernetes_secret_v1.argocd_manager_token.data["token"]
   labels       = var.cluster_labels
+  # Parâmetros para os ApplicationSets (index .metadata.annotations "..."):
+  # o AWS Load Balancer Controller precisa da VPC e da região (o pod não lê o IMDS).
+  annotations = {
+    vpc-id = module.eks.vpc_id
+    region = var.region
+  }
 }

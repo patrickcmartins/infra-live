@@ -36,7 +36,7 @@ projects:
     execution_order_group: 2
     depends_on: [local-mgmt, aws-global-dns]
     autoplan:
-      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl", "../../shared/iam/*.json"]
 
   # prod depende de stg: num PR que mexe nos dois, stg aplica primeiro (e tem que dar certo).
   - name: aws-prod-eks
@@ -45,7 +45,7 @@ projects:
     execution_order_group: 3
     depends_on: [local-mgmt, aws-stg-eks]
     autoplan:
-      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl"]
+      when_modified: ["*.tf", "*.tfvars", ".terraform.lock.hcl", "../../shared/iam/*.json"]
 
   # Configuração do GitHub (environments, proteção da main): quem pode fazer deploy onde.
   - name: github-config
