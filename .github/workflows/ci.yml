@@ -18,7 +18,7 @@ jobs:
   env-parity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: todo *.tf (exceto versions.tf) idêntico entre stg e prod
         run: |
           diff -u <(cd aws/stg/eks && printf '%s\n' ./*.tf) <(cd aws/prod/eks && printf '%s\n' ./*.tf)
@@ -37,7 +37,7 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # gitleaks olha o histórico do PR, não só a árvore
       - uses: actions/setup-python@v5
