@@ -84,7 +84,7 @@ data "aws_iam_policy_document" "state_read" {
 }
 
 module "github_oidc" {
-  source = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/aws-github-oidc?ref=v0.1.0"
+  source = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/aws-github-oidc?ref=v0.2.0"
 
   roles = {
     gha-infra-live-readonly = {
