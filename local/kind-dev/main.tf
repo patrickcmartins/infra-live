@@ -26,7 +26,7 @@ provider "kubernetes" {
 }
 
 module "registration" {
-  source    = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/argocd-cluster-secret?ref=v0.1.0"
+  source    = "git::https://github.com/patrickcmartins/terraform-modules.git//modules/argocd-cluster-secret?ref=v0.2.0"
   providers = { kubernetes = kubernetes.hub }
 
   name   = var.cluster_name
